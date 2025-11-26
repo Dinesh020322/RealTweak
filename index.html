@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Room Editor with Floor Plan Designer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: #1a1a1a;
+            color: #fff;
+        }
+
+        .view-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Room Editor Styles */
+        #room-editor-view {
+            width: 100%;
+            height: 100%;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #ui-panel {
+            position: fixed;
+            left: 20px;
+            top: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            min-width: 280px;
+            max-width: 350px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        h2 {
+            color: #4FC3F7;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        h3 {
+            color: #4FC3F7;
+            margin: 15px 0 10px 0;
+            font-size: 1em;
+        }
+
+        .section {
+            margin-bottom: 20px;
+        }
+
+        input, button, select {
+            width: 100%;
+            padding: 12px;
+            margin: 5px 0;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        input, select {
+            background: #2a2a2a;
+            color: #fff;
+            border: 1px solid #444;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #4FC3F7;
+        }
+
+        button {
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(56, 239, 125, 0.4);
+        }
+
+        .btn-render {
+            background: linear-gradient(135deg, #FA709A 0%, #FEE140 100%);
+            color: white;
+            font-weight: bold;
+        }
+
+        .btn-render:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(250, 112, 154, 0.4);
+        }
+
+        .furniture-section {
+            margin-bottom: 20px;
+        }
+
+        .furniture-category-title {
+            font-size: 11px;
+            font-weight: bold;
+            color: #4FC3F7;
+            margin-bottom: 8px;
+            padding: 5px 0;
+            border-bottom: 1px solid #444;
+        }
+
+        .furniture-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .furniture-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 5px;
+            background: #2a2a2a;
+            border: 2px solid #444;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            min-height: 65px;
+        }
+
+        .furniture-btn:hover {
+            background: #3a3a3a;
+            border-color: #4FC3F7;
+            transform: translateY(-2px);
+        }
+
+        .furniture-btn.selected {
+            background: #4FC3F7;
+            border-color: #4FC3F7;
+            color: #000;
+            font-weight: bold;
+        }
+
+        .furniture-icon {
+            font-size: 24px;
+            margin-bottom: 4px;
+        }
+
+        .furniture-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        /* Material Selector Styles */
+        .material-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .material-btn {
+            width: 100%;
+            aspect-ratio: 1;
+            border: 3px solid #444;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .material-btn:hover {
+            transform: scale(1.05);
+            border-color: #4FC3F7;
+            box-shadow: 0 0 15px rgba(79, 195, 247, 0.5);
+        }
+
+        .material-btn.active {
+            border-color: #4FC3F7;
+            border-width: 4px;
+            box-shadow: 0 0 20px rgba(79, 195, 247, 0.8);
+        }
+
+        .material-btn::after {
+            content: attr(data-name);
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 3px;
+            font-size: 8px;
+            text-align: center;
+            color: white;
+        }
+
+        .target-selector {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        .target-btn {
+            flex: 1;
+            padding: 8px;
+            background: #2a2a2a;
+            border: 2px solid #444;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .target-btn:hover {
+            background: #3a3a3a;
+            border-color: #4FC3F7;
+        }
+
+        .target-btn.active {
+            background: #4FC3F7;
+            color: #000;
+            border-color: #4FC3F7;
+            font-weight: bold;
+        }
+
+        .dimensions {
+            background: #2a2a2a;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 13px;
+        }
+
+        .dim-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+
+        .dim-label {
+            color: #888;
+        }
+
+        .dim-value {
+            color: #4FC3F7;
+            font-weight: bold;
+        }
+
+        #floorplan-indicator {
+            margin-top: 15px;
+        }
+
+        .indicator-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .indicator-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .indicator-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+
+        .indicator-text {
+            font-size: 11px;
+            opacity: 0.9;
+            margin: 0;
+        }
+
+        #status {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+            border: 1px solid #4FC3F7;
+            z-index: 100;
+        }
+
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            padding: 30px 50px;
+            border-radius: 10px;
+            font-size: 18px;
+            display: none;
+            backdrop-filter: blur(10px);
+            border: 2px solid #4FC3F7;
+            z-index: 200;
+        }
+
+        .loader {
+            border: 3px solid #333;
+            border-top: 3px solid #4FC3F7;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 10px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .controls-help {
+            background: #2a2a2a;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 10px;
+            line-height: 1.6;
+            color: #aaa;
+            margin-top: 10px;
+        }
+
+        .controls-help strong {
+            color: #4FC3F7;
+        }
+
+        /* Floor Plan Designer Styles */
+        #floorplan-view {
+            width: 100%;
+            height: 100%;
+            background: #e8e8e8;
+        }
+
+        .floorplan-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .left-toolbar {
+            width: 50px;
+            background: #f5f5f5;
+            border-right: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px 0;
+            overflow-y: auto;
+        }
+
+        .toolbar-btn {
+            width: 40px;
+            height: 40px;
+            margin: 5px 0;
+            border: none;
+            background: #f5f5f5;
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all 0.3s;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .toolbar-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .toolbar-btn.active {
+            background: #4FC3F7;
+        }
+
+        .toolbar-btn small {
+            font-size: 8px;
+            margin-top: 2px;
+            color: #666;
+        }
+
+        .main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .top-menu {
+            height: 50px;
+            background: white;
+            border-bottom: 1px solid #ccc;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 20px;
+        }
+
+        .menu-section {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .menu-section label {
+            font-weight: bold;
+            color: #333;
+            font-size: 13px;
+        }
+
+        .menu-section input, .menu-section select {
+            padding: 6px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 12px;
+            width: auto;
+        }
+
+        .menu-btn {
+            padding: 6px 15px;
+            background: #f5f5f5;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+            width: auto;
+        }
+
+        .menu-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .canvas-area {
+            flex: 1;
+            position: relative;
+            background: #e8e8e8;
+        }
+
+        #floorplanCanvas {
+            display: block;
+            cursor: crosshair;
+        }
+
+        .right-panel {
+            width: 200px;
+            background: white;
+            border-left: 1px solid #ccc;
+            padding: 10px;
+            overflow-y: auto;
+        }
+
+        .panel-section {
+            margin-bottom: 15px;
+        }
+
+        .panel-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 12px;
+            text-align: center;
+            background: #f5f5f5;
+            padding: 5px;
+            border-radius: 4px;
+        }
+
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+        }
+
+        .category-btn {
+            padding: 8px 4px;
+            border: 2px solid #ddd;
+            background: #f9f9f9;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+            font-size: 10px;
+            min-height: 50px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .category-btn:hover {
+            background: #e8f4f8;
+            border-color: #4FC3F7;
+        }
+
+        .category-btn.active {
+            background: #4FC3F7;
+            border-color: #0288d1;
+            color: white;
+        }
+
+        .category-icon {
+            font-size: 18px;
+            margin-bottom: 3px;
+        }
+
+        .bottom-info {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 15px 25px;
+            border-radius: 25px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            font-size: 13px;
+            color: #333;
+            z-index: 100;
+        }
+
+        .info-item {
+            display: inline-block;
+            margin: 0 15px;
+        }
+
+        .info-label {
+            font-weight: bold;
+            color: #666;
+        }
+
+        .info-value {
+            color: #0288d1;
+            font-weight: bold;
+        }
+
+        .top-menu-right {
+            margin-left: auto;
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-3d {
+            padding: 6px 15px;
+            background: #4FC3F7;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            width: auto;
+        }
+
+        .btn-3d:hover {
+            background: #0288d1;
+        }
+
+        .btn-save {
+            padding: 6px 15px;
+            background: #66BB6A;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            width: auto;
+        }
+
+        .btn-save:hover {
+            background: #4caf50;
+        }
+
+        .btn-clear {
+            padding: 6px 15px;
+            background: #FF7043;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            width: auto;
+        }
+
+        .btn-clear:hover {
+            background: #ff5722;
+        }
+
+        .btn-back {
+            padding: 6px 15px;
+            background: #9E9E9E;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            width: auto;
+        }
+
+        .btn-back:hover {
+            background: #757575;
+        }
+
+        .view-3d {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            z-index: 500;
+            background: #1a1a1a;
+        }
+
+        .view-3d.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        #canvas3d {
+            flex: 1;
+        }
+
+        .close-3d {
+            padding: 10px 20px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 501;
+        }
+
+        .close-3d:hover {
+            background: #d32f2f;
+        }
+
+        .btn-render-3d {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #FA709A 0%, #FEE140 100%);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            position: absolute;
+            top: 70px;
+            right: 20px;
+            z-index: 501;
+        }
+
+        .btn-render-3d:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(250, 112, 154, 0.4);
+        }
+
+        .room-number-display {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(79, 195, 247, 0.95);
+            color: white;
+            padding: 10px 25px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 16px;
+            z-index: 150;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        /* Scrollbar styling for panels */
+        #ui-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #ui-panel::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        #ui-panel::-webkit-scrollbar-thumb {
+            background: #4FC3F7;
+            border-radius: 4px;
+        }
+
+        .right-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .right-panel::-webkit-scrollbar-track {
+            background: #f5f5f5;
+        }
+
+        .right-panel::-webkit-scrollbar-thumb {
+            background: #4FC3F7;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Room Editor View -->
+    <div id="room-editor-view" class="view-container">
+        <div id="canvas-container"></div>
+
+        <div id="ui-panel">
+            <h2>Room Editor</h2>
+
+            <div class="section">
+                <button class="btn-success" onclick="switchToFloorPlan()">Floor Plan Designer</button>
+            </div>
+
+            <div class="section">
+                <h3>Load Room</h3>
+                <input type="text" id="room-id-input" placeholder="Enter Room ID" value="5216">
+                <button class="btn-primary" onclick="loadRoom()">Load Room</button>
+            </div>
+
+            <!-- Floor Plan Indicator -->
+            <div id="floorplan-indicator" style="display: none;">
+                <div class="indicator-box">
+                    <div class="indicator-icon"></div>
+                    <div class="indicator-title">Floor Plan Available</div>
+                    <p class="indicator-text">This room has a saved floor plan design</p>
+                </div>
+            </div>
+
+            <!-- Material Changer Section -->
+            <div class="section">
+                <h3>Material Changer</h3>
+                <div class="target-selector">
+                    <button class="target-btn active" onclick="setMaterialTarget('wall')" id="target-wall">Wall</button>
+                    <button class="target-btn" onclick="setMaterialTarget('floor')" id="target-floor">Floor</button>
+                    <button class="target-btn" onclick="setMaterialTarget('furniture')" id="target-furniture">Item</button>
+                </div>
+                <div class="material-grid" id="material-grid">
+                    <!-- Materials will be generated by JavaScript -->
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Add Furniture</h3>
+                <div id="furniture-container">
+                    <!-- Furniture buttons will be generated by JavaScript -->
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Actions</h3>
+                <button class="btn-primary" onclick="saveChanges()">Save Changes</button>
+                <button class="btn-render" onclick="downloadRoomRenders()">Download </button>
+                <button class="btn-danger" onclick="deleteSelected()">Delete Selected</button>
+            </div>
+
+            <div class="section">
+                <h3>Room Dimensions</h3>
+                <div class="dimensions">
+                    <div class="dim-row">
+                        <span class="dim-label">Width:</span>
+                        <span class="dim-value" id="dim-width">-</span>
+                    </div>
+                    <div class="dim-row">
+                        <span class="dim-label">Height:</span>
+                        <span class="dim-value" id="dim-height">-</span>
+                    </div>
+                    <div class="dim-row">
+                        <span class="dim-label">Depth:</span>
+                        <span class="dim-value" id="dim-depth">-</span>
+                    </div>
+                    <div class="dim-row">
+                        <span class="dim-label">Area:</span>
+                        <span class="dim-value" id="dim-area">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls-help">
+                <strong>Controls:</strong><br>
+                <strong>G</strong> = Move (translate)<br>
+                <strong>R</strong> = Rotate<br>
+                <strong>S</strong> = Scale<br>
+                <strong>ESC</strong> = Deselect<br>
+                <strong>Delete</strong> = Remove object<br>
+                <strong>+/-</strong> = Resize gizmo<br><br>
+                <strong>Material Changer:</strong><br>
+                Select target (Wall/Floor/Item), choose material, click object to apply!<br><br>
+                <strong>3-Angle Renders:</strong><br>
+                Download high-quality images from 3 different camera angles!
+            </div>
+        </div>
+
+        <div id="status">Ready! Load room 5216</div>
+        <div id="loading">
+            <div class="loader"></div>
+            Loading...
+        </div>
+    </div>
+
+    <!-- Floor Plan Designer View -->
+    <div id="floorplan-view" class="view-container hidden">
+        <div class="room-number-display" id="roomNumberDisplay">Room: New Project</div>
+        
+        <div class="floorplan-container">
+            <div class="left-toolbar">
+                <button class="toolbar-btn" onclick="selectTool('select')" id="btn-select" title="Select">
+                    ↖️ <small>Select</small>
+                </button>
+                <button class="toolbar-btn" onclick="selectTool('wall')" id="btn-wall" title="Draw Wall">
+                    ▬ <small>Wall</small>
+                </button>
+                <button class="toolbar-btn" onclick="selectTool('door')" id="btn-door" title="Door">
+                    🚪 <small>Door</small>
+                </button>
+                <button class="toolbar-btn" onclick="selectTool('window')" id="btn-window" title="Window">
+                    🪟 <small>Window</small>
+                </button>
+                <button class="toolbar-btn" onclick="selectTool('furniture')" id="btn-furniture" title="Furniture">
+                    🪑 <small>Furn</small>
+                </button>
+                <button class="toolbar-btn" onclick="selectTool('dimension')" id="btn-dimension" title="Dimension">
+                    📏 <small>Dim</small>
+                </button>
+                <button class="toolbar-btn" onclick="selectTool('delete')" id="btn-delete" title="Delete">
+                    🗑️ <small>Delete</small>
+                </button>
+                <button class="toolbar-btn" onclick="selectTool('pan')" id="btn-pan" title="Pan">
+                    ⊙ <small>Pan</small>
+                </button>
+            </div>
+
+            <div class="main-area">
+                <div class="top-menu">
+                    <button class="btn-back" onclick="switchToRoomEditor()">← Back</button>
+                    <div class="menu-section">
+                        <label>Room ID:</label>
+                        <input type="text" id="floorplan-room-id" placeholder="Enter Room ID" value="">
+                    </div>
+                    <div class="menu-section">
+                        <button class="menu-btn" onclick="loadFloorplan()">Load</button>
+                    </div>
+                    <div class="top-menu-right">
+                        <button class="menu-btn" onclick="undoAction()">⟲ Undo</button>
+                        <button class="menu-btn" onclick="redoAction()">⟳ Redo</button>
+                        <button class="btn-clear" onclick="clearCanvas()">Clear</button>
+                        <button class="btn-save" onclick="saveFloorplan()">Save to Firebase</button>
+                        <button class="btn-3d" onclick="view3D()">View 3D</button>
+                    </div>
+                </div>
+
+                <div class="canvas-area">
+                    <canvas id="floorplanCanvas"></canvas>
+                </div>
+            </div>
+
+            <div class="right-panel" id="rightPanel">
+                <!-- Categories will be generated by JavaScript -->
+            </div>
+        </div>
+
+        <div class="bottom-info">
+            <div class="info-item">
+                <span class="info-label">Area:</span>
+                <span class="info-value" id="areaDisplay">0</span> m²
+            </div>
+            <div class="info-item">
+                <span class="info-label">Dimensions:</span>
+                <span class="info-value" id="dimensionsDisplay">0 x 0</span> m
+            </div>
+        </div>
+    </div>
+
+    <!-- 3D View -->
+    <div class="view-3d" id="view3d">
+        <button class="close-3d" onclick="close3DView()">✕ Close 3D</button>
+        <button class="btn-render-3d" onclick="downloadFloorplanRenders()">Download</button>
+        <canvas id="canvas3d"></canvas>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/TransformControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="roomEditor.js"></script>
+    <script src="floorplanDesigner.js"></script>
+
+</body>
+</html>
