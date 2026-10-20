@@ -1,0 +1,6 @@
+# Large native Firebase libraries inside the Unity Assets folder go through Git LFS
+# (GitHub rejects normal files over 100 MB).
+RealTweak_AR/Assets/Firebase/Plugins/x86_64/*.bundle filter=lfs diff=lfs merge=lfs -text
+RealTweak_AR/Assets/Firebase/Plugins/x86_64/*.so filter=lfs diff=lfs merge=lfs -text
+RealTweak_AR/Assets/Firebase/Plugins/x86_64/*.dll filter=lfs diff=lfs merge=lfs -text
+RealTweak_AR/Assets/Plugins/**/*.a filter=lfs diff=lfs merge=lfs -text

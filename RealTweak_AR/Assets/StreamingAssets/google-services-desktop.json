@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "943647845136",
+    "project_id": "realtweak",
+    "storage_bucket": "realtweak.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:943647845136:android:55bf65a1be671efc2f1395",
+        "android_client_info": {
+          "package_name": "com.FourFriendsInteractive.RealTweakAR"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDrewDfdhUTG8BsPwKBJcWoJCOJVyXV1Ag"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

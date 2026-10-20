@@ -1,0 +1,18 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /meshes/{fileName} {
+      // Only known room-code paths are readable. No bucket listing or arbitrary paths.
+      allow get: if request.auth != null && fileName.matches('^[A-Za-z0-9_-]{4,64}[.]obj$');
+      // The phone that created a room uploads its raw scan once, right after creating the
+      // room document. Overwrites are denied so a code holder cannot replace someone's scan.
+      // Requires granting Storage access to Firestore (the console prompts on first deploy).
+      allow create: if request.auth != null
+        && fileName.matches('^[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{8}[.]obj$')
+        && request.resource.size > 0 && request.resource.size < 25 * 1024 * 1024
+        && request.resource.contentType == 'model/obj'
+        && firestore.exists(/databases/(default)/documents/rooms/$(fileName.split('[.]')[0]));
+      allow update, delete, list: if false;
+    }
+  }
+}

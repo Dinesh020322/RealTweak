@@ -1,0 +1,9 @@
+# Only the Assets folder of the Unity project is versioned.
+# Everything else (Library, Temp, Logs, UserSettings, Builds, Packages, ProjectSettings, IDE files…) stays local.
+/*
+!/.gitignore
+!/Assets/
+
+# Generated inside Assets but not needed in git
+/Assets/**/*.pdb
+/Assets/**/*.pdb.meta

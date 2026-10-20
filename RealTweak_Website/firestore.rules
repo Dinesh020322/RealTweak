@@ -1,0 +1,70 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    // Any existing code (including legacy 4-digit and 32-hex codes) can be read and edited.
+    function validCode(id) { return id.matches('^[A-Za-z0-9_-]{4,64}$'); }
+    // New rooms must use 8-character codes without look-alike characters (ABCD-EFGH style).
+    function newCode(id) { return id.matches('^[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{8}$'); }
+    function vector(v) {
+      return v is map && v.keys().hasAll(['x','y','z'])
+        && v.x is number && v.y is number && v.z is number;
+    }
+    function validRoom(d, id) {
+      return d.roomId == id && d.schemaVersion == 2
+        && d.name is string && d.name.size() > 0 && d.name.size() <= 80
+        && d.revision is int && d.revision >= 1
+        && d.timestamp is int && d.timestamp > 0
+        && vector(d.dimensions)
+        && d.dimensions.x >= 0.5 && d.dimensions.x <= 100
+        && d.dimensions.y >= 0.5 && d.dimensions.y <= 100
+        && d.dimensions.z >= 0.5 && d.dimensions.z <= 100
+        && d.floor is map && d.floor.vertices is list
+        && d.floor.vertices.size() >= 3 && d.floor.vertices.size() <= 500
+        && vector(d.floor.center)
+        && d.walls is list && d.walls.size() <= 500
+        && d.furniture is list && d.furniture.size() <= 300
+        && d.openings is list && d.openings.size() <= 100
+        && (!('levels' in d) || (d.levels is list && d.levels.size() <= 11))
+        && (!('levelName' in d) || (d.levelName is string && d.levelName.size() <= 40))
+        && d.updatedAt == request.time;
+    }
+    function validCreateExtras(d, id) {
+      return (!('source' in d) || d.source in ['web', 'scan'])
+        && (!('meshPath' in d) || d.meshPath == 'meshes/' + id + '.obj')
+        && (!('scan' in d) || (d.scan is map && d.scan.size() <= 16));
+    }
+    match /rooms/{roomId} {
+      // A room code is a bearer capability. Anonymous Auth supplies an abuse-control identity.
+      // Never permit listing rooms. Enable App Check enforcement in the console before release.
+      allow get: if signedIn() && validCode(roomId);
+      allow list: if false;
+      allow create: if signedIn() && newCode(roomId)
+        && validRoom(request.resource.data, roomId)
+        && request.resource.data.revision == 1
+        && request.resource.data.createdAt == request.time
+        && validCreateExtras(request.resource.data, roomId)
+        && request.resource.data.keys().hasOnly(['roomId','schemaVersion','name','revision','timestamp','dimensions','floor','walls','furniture','openings','createdAt','updatedAt','source','scan','meshPath','levels','levelName']);
+      allow update: if signedIn() && validCode(roomId)
+        && validRoom(request.resource.data, roomId)
+        && request.resource.data.revision == resource.data.get('revision', 0) + 1
+        && request.resource.data.timestamp > resource.data.get('timestamp', 0)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['schemaVersion','name','dimensions','floor','walls','furniture','openings','levels','levelName','revision','timestamp','updatedAt']);
+      allow delete: if false;
+
+      // Each AR device reports which revision it is showing, so the website can say
+      // "showing your latest save". A device can only write its own entry.
+      match /devices/{deviceId} {
+        allow get, list: if signedIn() && validCode(roomId);
+        allow create, update: if signedIn() && deviceId == request.auth.uid
+          && exists(/databases/$(database)/documents/rooms/$(roomId))
+          && request.resource.data.keys().hasOnly(['platform','model','appliedRevision','seenAt'])
+          && request.resource.data.platform is string && request.resource.data.platform.size() <= 20
+          && request.resource.data.model is string && request.resource.data.model.size() <= 60
+          && request.resource.data.appliedRevision is int
+          && request.resource.data.seenAt is int;
+        allow delete: if signedIn() && deviceId == request.auth.uid;
+      }
+    }
+  }
+}
