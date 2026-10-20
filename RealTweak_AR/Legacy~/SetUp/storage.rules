@@ -1,0 +1,38 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Meshes storage
+    match /meshes/{roomId}.obj {
+      // Allow read access to anyone
+      allow read: if true;
+      
+      // Allow write for authenticated users or for testing
+      allow write: if request.auth != null || true; // Set to 'request.auth != null' in production
+      
+      // Validate file size (max 50MB)
+      allow create: if request.resource.size < 50 * 1024 * 1024;
+      
+      // Allow updates
+      allow update: if request.resource.size < 50 * 1024 * 1024;
+    }
+    
+    // Furniture models storage
+    match /furniture/{furnitureId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null || true;
+    }
+    
+    // Textures and materials
+    match /textures/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // User uploads
+    match /users/{userId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

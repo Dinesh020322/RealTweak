@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Rooms collection - allow read/write for authenticated and public read for demo
+    match /rooms/{roomId} {
+      // Allow read access to anyone (for WebGL demo)
+      allow read: if true;
+      
+      // Allow write only if authenticated or for testing (adjust for production)
+      allow write: if request.auth != null || true; // Set to 'request.auth != null' in production
+      
+      // Allow create with valid room data structure
+      allow create: if request.resource.data.keys().hasAll(['roomId', 'timestamp', 'dimensions', 'floor', 'walls', 'furniture'])
+                    && request.resource.data.roomId is string
+                    && request.resource.data.timestamp is int
+                    && request.resource.data.dimensions is map
+                    && request.resource.data.floor is map
+                    && request.resource.data.walls is list
+                    && request.resource.data.furniture is list;
+      
+      // Allow update with valid fields
+      allow update: if request.resource.data.diff(resource.data).affectedKeys()
+                    .hasOnly(['furniture', 'timestamp', 'meshUrl']);
+    }
+    
+    // Furniture subcollection (if needed for more granular control)
+    match /rooms/{roomId}/furniture/{furnitureId} {
+      allow read: if true;
+      allow write: if request.auth != null || true; // Adjust for production
+    }
+    
+    // User profiles (optional)
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

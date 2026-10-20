@@ -1,9 +1,20 @@
-# Only the Assets folder of the Unity project is versioned.
-# Everything else (Library, Temp, Logs, UserSettings, Builds, Packages, ProjectSettings, IDE files…) stays local.
-/*
-!/.gitignore
-!/Assets/
-
-# Generated inside Assets but not needed in git
-/Assets/**/*.pdb
-/Assets/**/*.pdb.meta
+# Unity generated (not versioned)
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Bb]uilds/
+/[Bb]uild/
+/.utmp/
+/.vs/
+*.csproj
+*.sln
+*.pdb
+*.pdb.meta
+*.apk
+*.aab
+crashlytics-build.properties
+# dotnet test output for the pure core
+/CoreTests~/bin/
+/CoreTests~/obj/
