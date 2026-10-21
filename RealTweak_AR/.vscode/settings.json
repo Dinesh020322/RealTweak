@@ -56,5 +56,5 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "RealTweak_AR.sln"
+    "dotnet.defaultSolution": "RealTweak_AR.slnx"
 }
